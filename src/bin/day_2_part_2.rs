@@ -1,4 +1,4 @@
-use std::{path::Path, io::{self, BufRead}, fs::File};
+use std::{path::Path, io::{self, BufRead}, fs::File, cmp::max};
 
 use nom::{IResult, bytes::complete::{tag, take_while1}, multi::separated_list1, sequence::{Tuple, tuple}, branch::alt};
 
@@ -10,17 +10,17 @@ fn main() {
 
             let g = game(&line.unwrap()).unwrap().1;
 
-            let mut possible = true;
+            let mut red: u8 = 0;
+            let mut green: u8 = 0;
+            let mut blue: u8 = 0;
+
             for subset_of_cubes in g.subsets_of_cubes {
-                if !subset_of_cubes.is_possible(12, 13, 14) {
-                    possible = false;
-                    break;
-                }
+                red = max(red, subset_of_cubes.red);
+                green = max(green, subset_of_cubes.green);
+                blue = max(blue, subset_of_cubes.blue);
             }
 
-            if possible {
-                sum += u64::from(g.id)
-            }
+            sum += u64::from(red) * u64::from(green) * u64::from(blue);
         }
 
         println!("{sum}");
@@ -36,9 +36,9 @@ where P: AsRef<Path>, {
 fn game(s: &str) -> IResult<&str, Game> {
     let is_digit = |c: char| c.is_digit(10);
 
-    let (s, (_, id, _, subsets_of_cubes)) = (tag("Game "), take_while1(is_digit), tag(": "), separated_list1(tag("; "), subset_of_cubes)).parse(s)?;
+    let (s, (_, _, _, subsets_of_cubes)) = (tag("Game "), take_while1(is_digit), tag(": "), separated_list1(tag("; "), subset_of_cubes)).parse(s)?;
 
-    return Ok((s, Game{id: id.parse().unwrap(), subsets_of_cubes}))
+    return Ok((s, Game{subsets_of_cubes}))
 }
 
 fn subset_of_cubes(s: &str) -> IResult<&str, SubsetOfCubes> {
@@ -62,7 +62,6 @@ fn subset_of_cubes(s: &str) -> IResult<&str, SubsetOfCubes> {
 }
 
 struct Game {
-    pub id: u8,
     pub subsets_of_cubes: Vec<SubsetOfCubes>,
 }
 
@@ -70,10 +69,4 @@ struct SubsetOfCubes {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
-}
-
-impl SubsetOfCubes {
-    fn is_possible(&self, red: u8, green: u8, blue: u8) -> bool {
-        self.red <= red && self.green <= green && self.blue <= blue
-    }
 }
